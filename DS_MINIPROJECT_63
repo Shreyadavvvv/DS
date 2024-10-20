@@ -1,0 +1,192 @@
+#include <ctype.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define MAX_WORD_LENGTH 50
+#define MAX_TRIES 6
+#define STACK_SIZE 26  // Maximum number of different letters (A-Z)
+
+// Struct to hold a word and its hint
+struct WordWithHint {
+    char word[MAX_WORD_LENGTH];
+    char hint[MAX_WORD_LENGTH];
+};
+
+// Stack definition to store guessed letters
+typedef struct {
+    char data[STACK_SIZE];
+    int top;
+} Stack;
+
+// Function prototypes
+void push(Stack* stack, char letter);
+char pop(Stack* stack);
+bool isInStack(Stack* stack, char letter);
+void displayWord(const char word[], const bool guessed[]);
+void drawHangman(int tries);
+void initializeStack(Stack* stack);
+bool isStackEmpty(Stack* stack);
+
+// Driver code
+int main() {
+    // Seed the random number generator with the current time
+    srand(time(NULL));
+
+    // Array of words with hints
+    struct WordWithHint wordList[] = {
+        {"fridge", "Cool place to keep things fresh"},
+        {"elephant", "A large mammal with a trunk"},
+        {"pizza", "A popular Italian dish"},
+        {"beach", "Sandy shore by the sea"},
+        // Add more words and hints here
+    };
+
+    // Select a random word from the list
+    int wordIndex = rand() % 4;
+    const char* secretWord = wordList[wordIndex].word;
+    const char* hint = wordList[wordIndex].hint;
+    int wordLength = strlen(secretWord);
+
+    bool guessedLetters[26] = { false };  // Array to track guessed letters
+    Stack guessedStack;  // Stack to store guessed letters
+    initializeStack(&guessedStack);  // Initialize the stack
+
+    printf("Welcome to Hangman with Stacks!\n");
+    printf("Hint: %s\n", hint);
+
+    int tries = 0;
+
+    // Main game loop
+    while (tries < MAX_TRIES) {
+        printf("\n");
+        displayWord(secretWord, guessedLetters);
+        drawHangman(tries);
+
+        char guess;
+        printf("Enter a letter (or enter 'U' to undo the last guess): ");
+        scanf(" %c", &guess);
+        guess = tolower(guess);
+
+        if (guess == 'u') {
+            if (!isStackEmpty(&guessedStack)) {
+                char lastGuess = pop(&guessedStack);
+                guessedLetters[lastGuess - 'a'] = false;
+                printf("Undone last guess: %c\n", lastGuess);
+            } else {
+                printf("No guesses to undo!\n");
+            }
+            continue;
+        }
+
+        if (isInStack(&guessedStack, guess)) {
+            printf("You've already guessed that letter. Try again.\n");
+            continue;
+        }
+
+        push(&guessedStack, guess);  // Push the guessed letter onto the stack
+        guessedLetters[guess - 'a'] = true;  // Mark the letter as guessed
+
+        bool found = false;
+        for (int i = 0; i < wordLength; i++) {
+            if (secretWord[i] == guess) {
+                found = true;
+            }
+        }
+
+        if (found) {
+            printf("Good guess!\n");
+        } else {
+            printf("Sorry, the letter '%c' is not in the word.\n", guess);
+            tries++;
+        }
+
+        // Check if the player has guessed the entire word
+        bool allGuessed = true;
+        for (int i = 0; i < wordLength; i++) {
+            if (!guessedLetters[secretWord[i] - 'a']) {
+                allGuessed = false;
+                break;
+            }
+        }
+
+        if (allGuessed) {
+            printf("\nCongratulations! You've guessed the word: %s\n", secretWord);
+            break;
+        }
+    }
+
+    if (tries >= MAX_TRIES) {
+        printf("\nSorry, you've run out of tries. The word was: %s\n", secretWord);
+    }
+
+    return 0;
+}
+
+// Stack functions
+void initializeStack(Stack* stack) {
+    stack->top = -1;
+}
+
+void push(Stack* stack, char letter) {
+    if (stack->top < STACK_SIZE - 1) {
+        stack->top++;
+        stack->data[stack->top] = letter;
+    } else {
+        printf("Stack overflow!\n");
+    }
+}
+
+char pop(Stack* stack) {
+    if (stack->top >= 0) {
+        return stack->data[stack->top--];
+    } else {
+        printf("Stack underflow!\n");
+        return '\0';
+    }
+}
+
+bool isInStack(Stack* stack, char letter) {
+    for (int i = 0; i <= stack->top; i++) {
+        if (stack->data[i] == letter) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool isStackEmpty(Stack* stack) {
+    return stack->top == -1;
+}
+
+// Display the current state of the word
+void displayWord(const char word[], const bool guessed[]) {
+    printf("Word: ");
+    for (int i = 0; word[i] != '\0'; i++) {
+        if (guessed[word[i] - 'a']) {
+            printf("%c ", word[i]);
+        } else {
+            printf("_ ");
+        }
+    }
+    printf("\n");
+}
+
+// Draw the hangman based on the number of wrong tries
+void drawHangman(int tries) {
+    const char* hangmanParts[] = {
+        " _________",
+        " |      |",
+        " |      O",
+        " |     /|\\",
+        " |     / \\",
+        " |"
+    };
+
+    printf("\n");
+    for (int i = 0; i <= tries; i++) {
+        printf("%s\n", hangmanParts[i]);
+    }
+}
